@@ -20,7 +20,6 @@ use hyper::{
 use hyper_proxy::{Proxy as UpstreamProxy, ProxyConnector};
 use hyper_rustls::HttpsConnector;
 use proxy::Proxy;
-use rustls::ClientConfig;
 use std::{convert::Infallible, future::Future, net::SocketAddr};
 use tokio_tungstenite::tungstenite::Message;
 
@@ -175,7 +174,6 @@ where
     Server::bind(&listen_addr)
         .http1_preserve_header_case(true)
         .http1_title_case_headers(true)
-        .http1_only(true)
         .serve(make_service)
         .with_graceful_shutdown(shutdown_signal)
         .await
@@ -186,14 +184,7 @@ fn gen_client(upstream_proxy: Option<UpstreamProxy>) -> MaybeProxyClient {
     let mut http = HttpConnector::new();
     http.enforce_http(false);
 
-    let mut config = ClientConfig::new();
-    config.ct_logs = Some(&ct_logs::LOGS);
-    config.set_protocols(&[b"http/1.1".to_vec()]);
-    config
-        .root_store
-        .add_server_trust_anchors(&webpki_roots::TLS_SERVER_ROOTS);
-
-    let https: HttpsConnector<HttpConnector> = (http, config).into();
+    let https = HttpsConnector::with_webpki_roots();
 
     if let Some(proxy) = upstream_proxy {
         // The following can only panic when using the "rustls" hyper_proxy feature

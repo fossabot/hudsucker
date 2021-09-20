@@ -43,10 +43,15 @@ where
         }
     }
 
-    async fn process_request(mut self, req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
+    async fn process_request(
+        mut self,
+        mut req: Request<Body>,
+    ) -> Result<Response<Body>, hyper::Error> {
         let ctx = HttpContext {
             client_addr: self.client_addr,
         };
+
+        req.headers_mut().remove(http::header::HOST);
 
         let req = match self.http_handler.handle_request(&ctx, req).await {
             RequestOrResponse::Request(req) => req,
